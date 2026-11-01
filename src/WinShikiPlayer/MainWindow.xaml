@@ -1,5 +1,5 @@
 <Window x:Class="WinShikiPlayer.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:ui="using:WinShikiPlayer.Controls">
-  <Grid x:Name="Root" Background="{StaticResource CanvasBrush}" SizeChanged="Root_SizeChanged">
+  <Grid x:Name="Root" Background="{StaticResource CanvasBrush}" SizeChanged="Root_SizeChanged" KeyboardAcceleratorPlacementMode="Hidden">
     <Grid.KeyboardAccelerators>
       <KeyboardAccelerator Key="Left" Modifiers="Menu" Invoked="Back_Invoked" />
       <KeyboardAccelerator Key="Right" Modifiers="Menu" Invoked="Forward_Invoked" />
