@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+ <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework></PropertyGroup>
+ <ItemGroup><ProjectReference Include="../../src/WinShikiPlayer.Core/WinShikiPlayer.Core.csproj" /></ItemGroup>
+ <ItemGroup><Content Include="Fixtures/*.json" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
+</Project>

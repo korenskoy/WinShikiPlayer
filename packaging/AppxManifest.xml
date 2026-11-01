@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+ xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+ xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+ xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+ IgnorableNamespaces="uap rescap uap10">
+ <Identity Name="WinShikiPlayer" Publisher="CN=WinShikiPlayer Development" Version="0.2.0.31" ProcessorArchitecture="x64" />
+ <Properties><DisplayName>WinShikiPlayer</DisplayName><PublisherDisplayName>WinShikiPlayer</PublisherDisplayName><Logo>Assets\AppIcon.png</Logo></Properties>
+ <Dependencies><TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" /></Dependencies>
+ <Resources><Resource Language="ru-ru"/><Resource Language="en-us"/></Resources>
+ <Applications>
+  <Application Id="App" Executable="WinShikiPlayer.exe" EntryPoint="Windows.FullTrustApplication" uap10:RuntimeBehavior="packagedClassicApp" uap10:TrustLevel="mediumIL">
+   <uap:VisualElements DisplayName="WinShikiPlayer" Description="Каталог Shikimori и плеер для Windows" Square150x150Logo="Assets\AppIcon.png" Square44x44Logo="Assets\AppIcon.png" BackgroundColor="transparent" />
+   <Extensions><uap:Extension Category="windows.protocol"><uap:Protocol Name="winshikiplayer"><uap:DisplayName>WinShikiPlayer</uap:DisplayName></uap:Protocol></uap:Extension></Extensions>
+  </Application>
+ </Applications>
+ <Capabilities><Capability Name="internetClient"/><rescap:Capability Name="runFullTrust"/></Capabilities>
+</Package>

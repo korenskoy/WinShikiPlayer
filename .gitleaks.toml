@@ -1,0 +1,25 @@
+title = "WinShikiPlayer secret detection"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "shikimori-client-credentials"
+description = "Shikimori OAuth client ID or secret"
+regex = '''(?i)(?:shikimori[_-]?)?client[_-]?(?:id|secret)["']?\s*[:=]\s*["']([a-z0-9_-]{32,128})["']'''
+secretGroup = 1
+keywords = ["client", "SHIKIMORI"]
+
+[[rules]]
+id = "kodik-api-token"
+description = "Kodik API token"
+regex = '''(?i)(?:kodik[_-]?(?:api[_-]?)?token|kodik-token)["']?\s*[:=]\s*["']([a-z0-9_-]{24,128})["']'''
+secretGroup = 1
+keywords = ["kodik", "KODIK"]
+
+[[rules]]
+id = "shikimori-oauth-callback"
+description = "OAuth callback containing a real authorization code"
+regex = '''(?i)(?:win|my)shikiplayer://oauth\?[^\s"'<>]*\bcode=([a-z0-9_-]{32,128})'''
+secretGroup = 1
+keywords = ["shikiplayer://oauth"]
