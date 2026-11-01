@@ -6,6 +6,7 @@ using WinShikiPlayer.Core;
 
 var tests = new (string Name, Func<Task> Run)[]
 {
+    ("Bundled application keys preserve overrides and never supply user sessions", BundledKeys),
     ("Original anime and whoami fixtures", Fixtures),
     ("Catalog query escaping, anonymous request", Catalog),
     ("Rate creation and update payloads", Rates),
@@ -135,6 +136,18 @@ static async Task PlayerPrefetch()
     Assert(await pending.TakeAsync(link, default) is null, "Cancelled stream remained available");
     using var failed = new EpisodePrefetch((_, _) => throw new HttpRequestException("offline"));
     failed.Prepare(link); Assert(await failed.TakeAsync(link, default) is null, "Speculative error interrupted playback");
+}
+static Task BundledKeys()
+{
+    var user = new Secrets(); var client = "bundled-client";
+    var store = new FallbackSecretStore(user, key => key switch { "client-secret" => client == "bundled-client" ? "application-secret" : null, "kodik-token" => "application-kodik", _ => "must-not-be-used" });
+    Assert(store.Read("client-secret") == "application-secret" && store.Read("kodik-token") == "application-kodik", "Fresh install requires manual app credentials");
+    Assert(store.Read("oauth-session") is null, "Bundled defaults supplied an account session");
+    store.Write("kodik-token", "user-kodik"); Assert(store.Read("kodik-token") == "user-kodik", "Bundled key replaced a user override");
+    store.Delete("kodik-token"); Assert(store.Read("kodik-token") == "application-kodik", "Clearing override did not restore default");
+    client = "custom-client"; Assert(store.Read("client-secret") is null, "Bundled secret crossed into another OAuth client");
+    store.Write("oauth-session", "user-session"); Assert(store.Read("oauth-session") == "user-session", "User session was not read from the user store");
+    return Task.CompletedTask;
 }
 static Task Fixtures()
 {

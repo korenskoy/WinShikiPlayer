@@ -41,7 +41,7 @@ public partial class App : Application
             if (activationArgs.Kind == ExtendedActivationKind.Protocol && activationArgs.Data is ProtocolActivatedEventArgs activatedProtocol)
                 MainWindow?.DispatcherQueue.TryEnqueue(() => MainWindow.AcceptProtocolCallback(activatedProtocol.Uri));
         };
-        if (arguments.Contains("--playback-smoke") || arguments.Contains("--register-protocol") || arguments.Contains("--protocol-smoke") || arguments.Contains("--direct-protocol-smoke") || arguments.Contains("--session-smoke") || arguments.Contains("--subtitle-smoke") || arguments.Contains("--auth-config-smoke"))
+        if (arguments.Contains("--bundled-config-smoke") || arguments.Contains("--playback-smoke") || arguments.Contains("--register-protocol") || arguments.Contains("--protocol-smoke") || arguments.Contains("--direct-protocol-smoke") || arguments.Contains("--session-smoke") || arguments.Contains("--subtitle-smoke") || arguments.Contains("--auth-config-smoke"))
         {
             await ApplicationDiagnostics.RunAsync(arguments); Exit(); return;
         }

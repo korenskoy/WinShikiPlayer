@@ -31,7 +31,54 @@ internal static class ApplicationDiagnostics
         object result;
         try
         {
-            if (arguments.Contains("--protocol-smoke") || arguments.Contains("--direct-protocol-smoke"))
+            if (arguments.Contains("--bundled-config-smoke"))
+            {
+                var directory = Path.Combine(Path.GetTempPath(), "WinShikiPlayer-Fresh-" + Guid.NewGuid().ToString("N"));
+                try
+                {
+                    var services = new AppServices(new LocalStore(directory), new DiagnosticSecrets(), skipLocalConfiguration: true);
+                    await services.InitializeAsync();
+                    using var resource = typeof(AppServices).Assembly.GetManifestResourceStream("WinShikiPlayer.BundledConfiguration.json")
+                        ?? throw new InvalidOperationException("В сборке нет общих ключей приложения.");
+                    var bundled = await JsonSerializer.DeserializeAsync<Dictionary<string, string>>(resource) ?? [];
+                    string[] allowed = ["SHIKIMORI_CLIENT_ID", "SHIKIMORI_CLIENT_SECRET", "SHIKIMORI_REDIRECT_URI", "SHIKIMORI_BASE_URL", "SHIKIMORI_USER_AGENT", "KODIK_API_TOKEN"];
+                    if (bundled.Keys.Except(allowed).Any() || services.Auth.IsSignedIn || services.Secrets.Read("oauth-session") is not null)
+                        throw new InvalidOperationException("Встроенная конфигурация содержит недопустимые данные.");
+                    if (services.Settings.ClientId != bundled["SHIKIMORI_CLIENT_ID"] || services.Secrets.Read("client-secret") != bundled["SHIKIMORI_CLIENT_SECRET"] || services.Secrets.Read("kodik-token") != bundled["KODIK_API_TOKEN"])
+                        throw new InvalidOperationException("Чистая установка не использует встроенные ключи.");
+                    using var request = new HttpRequestMessage(HttpMethod.Post, services.Settings.ShikimoriHost + "/oauth/token")
+                    {
+                        Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                        {
+                            ["grant_type"] = "authorization_code", ["client_id"] = services.Settings.ClientId,
+                            ["client_secret"] = services.Secrets.Read("client-secret")!, ["redirect_uri"] = services.Settings.RedirectUri,
+                            ["code"] = "winshikiplayer-diagnostic-invalid-code", ["code_verifier"] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+                        })
+                    };
+                    request.Headers.UserAgent.ParseAdd(services.Settings.UserAgent);
+                    using var response = await services.Http.SendAsync(request);
+                    using var error = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+                    if (!error.RootElement.TryGetProperty("error", out var oauthError) || oauthError.GetString() != "invalid_grant")
+                        throw new InvalidOperationException("Shikimori не подтвердил встроенный OAuth-клиент.");
+                    var translations = await services.Kodik.SearchAsync(16498);
+                    var resolved = await services.Resolver.ResolveAsync(translations[0].Episodes[0].Link, default);
+                    using var player = new MediaPlayer { AutoPlay = true, IsMuted = true };
+                    var opened = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    player.MediaOpened += (_, _) => opened.TrySetResult(true);
+                    player.MediaFailed += (_, args) => opened.TrySetException(new InvalidOperationException("MediaPlayer: " + args.Error));
+                    player.Source = MediaSource.CreateFromUri(resolved.Streams[0].Uri); player.Play();
+                    await opened.Task.WaitAsync(TimeSpan.FromSeconds(45));
+                    var initial = player.PlaybackSession.Position.TotalSeconds; await Task.Delay(4000);
+                    if (player.PlaybackSession.Position.TotalSeconds < initial + 1 || player.PlaybackSession.NaturalDuration.TotalSeconds < 60)
+                        throw new InvalidOperationException("Встроенный токен не позволил воспроизвести видео.");
+                    player.Pause();
+                    result = new { success = true, freshConfiguration = true, userSettingsRead = false, userCredentialVaultRead = false,
+                        applicationKeysBundled = true, personalSessionAbsent = true, oauthClientRecognized = true,
+                        kodikSearchSucceeded = true, playbackAdvancing = true, mutedForTest = true, accountWritesSuppressed = true };
+                }
+                finally { if (Directory.Exists(directory) && !Directory.EnumerateFileSystemEntries(directory).Any()) Directory.Delete(directory); }
+            }
+            else if (arguments.Contains("--protocol-smoke") || arguments.Contains("--direct-protocol-smoke"))
             {
                 ProtocolActivation.Register();
                 var nonce = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24));
@@ -146,4 +193,12 @@ internal static class ApplicationDiagnostics
     }
     [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
     private static extern uint AssocQueryString(uint flags, uint str, string association, string extra, StringBuilder output, ref uint size);
+
+    private sealed class DiagnosticSecrets : ISecretStore
+    {
+        private readonly Dictionary<string, string> _values = [];
+        public string? Read(string key) => _values.GetValueOrDefault(key);
+        public void Write(string key, string value) => _values[key] = value;
+        public void Delete(string key) => _values.Remove(key);
+    }
 }

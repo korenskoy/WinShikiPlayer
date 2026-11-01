@@ -29,8 +29,10 @@ public sealed class AppServices
 {
     public static string DataDirectory => ProtocolActivation.HasPackageIdentity() ? Windows.Storage.ApplicationData.Current.LocalFolder.Path
         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinShikiPlayer");
-    public LocalStore Store { get; } = new(DataDirectory);
-    public ISecretStore Secrets { get; } = new CredentialStore();
+    public LocalStore Store { get; }
+    private readonly ISecretStore _userSecrets;
+    private readonly bool _skipLocalConfiguration;
+    public ISecretStore Secrets { get; private set; }
     // Redirects are handled as errors: never forward bearer tokens, client secrets or Kodik tokens to another host.
     public HttpClient Http { get; } = new(new HttpClientHandler { AllowAutoRedirect = false, AutomaticDecompression = DecompressionMethods.All })
         { Timeout = TimeSpan.FromSeconds(30), MaxResponseContentBufferSize = 16 * 1024 * 1024 };
@@ -44,15 +46,37 @@ public sealed class AppServices
     public EpisodeProgressStore Progress { get; }
     public RepositoryCache Cache { get; }
     public User? User { get; set; }
-    public AppServices() { History = new(Store); Progress = new(Store); Cache = new(Store); }
+    public AppServices(LocalStore? store = null, ISecretStore? secrets = null, bool skipLocalConfiguration = false)
+    {
+        Store = store ?? new(DataDirectory); _userSecrets = secrets ?? new CredentialStore(); Secrets = _userSecrets;
+        _skipLocalConfiguration = skipLocalConfiguration;
+        History = new(Store); Progress = new(Store); Cache = new(Store);
+    }
     public string CacheKey(string key) => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
         System.Text.Encoding.UTF8.GetBytes(Settings.ShikimoriHost + ":" + (User?.Id.ToString() ?? "guest") + ":" + key)));
     public async Task InitializeAsync()
     {
-        Settings = await Store.ReadAsync<AppSettings>("settings") ?? new();
+        var savedSettings = await Store.ReadAsync<AppSettings>("settings");
+        Settings = savedSettings ?? new();
+        using var resource = typeof(AppServices).Assembly.GetManifestResourceStream("WinShikiPlayer.BundledConfiguration.json");
+        var bundled = resource is null ? new Dictionary<string, string>() : await JsonSerializer.DeserializeAsync<Dictionary<string, string>>(resource) ?? [];
+        var bundledClient = bundled.GetValueOrDefault("SHIKIMORI_CLIENT_ID") ?? "";
+        if (string.IsNullOrWhiteSpace(Settings.ClientId)) Settings.ClientId = bundledClient;
+        if (savedSettings is null)
+        {
+            Settings.ShikimoriHost = bundled.GetValueOrDefault("SHIKIMORI_BASE_URL") ?? Settings.ShikimoriHost;
+            Settings.RedirectUri = bundled.GetValueOrDefault("SHIKIMORI_REDIRECT_URI") ?? Settings.RedirectUri;
+            Settings.UserAgent = bundled.GetValueOrDefault("SHIKIMORI_USER_AGENT") ?? Settings.UserAgent;
+        }
+        Secrets = new FallbackSecretStore(_userSecrets, key => key switch
+        {
+            "client-secret" when Settings.ClientId == bundledClient => bundled.GetValueOrDefault("SHIKIMORI_CLIENT_SECRET"),
+            "kodik-token" => bundled.GetValueOrDefault("KODIK_API_TOKEN"),
+            _ => null
+        });
         var localPath = Path.Combine(AppContext.BaseDirectory, "appsettings.local.json");
         if (!File.Exists(localPath)) localPath = Path.Combine(DataDirectory, "appsettings.local.json");
-        if (File.Exists(localPath))
+        if (!_skipLocalConfiguration && File.Exists(localPath))
         {
             var local = JsonSerializer.Deserialize<Dictionary<string, string>>(await File.ReadAllTextAsync(localPath)) ?? [];
             if (local.GetValueOrDefault("SHIKIMORI_CLIENT_ID") is { Length: > 0 } id) Settings.ClientId = id;

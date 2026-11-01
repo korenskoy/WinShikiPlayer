@@ -1,3 +1,35 @@
+function Write-BundledApplicationConfiguration([string]$RepositoryRoot) {
+    $local = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'appsettings.local.json') -Raw | ConvertFrom-Json
+    $selected = [ordered]@{}
+    foreach ($key in @('SHIKIMORI_CLIENT_ID', 'SHIKIMORI_CLIENT_SECRET', 'SHIKIMORI_REDIRECT_URI', 'SHIKIMORI_BASE_URL', 'SHIKIMORI_USER_AGENT', 'KODIK_API_TOKEN')) {
+        $value = [string]$local.$key
+        if ($value.Length) { $selected[$key] = $value }
+    }
+    foreach ($key in @('SHIKIMORI_CLIENT_ID', 'SHIKIMORI_CLIENT_SECRET', 'KODIK_API_TOKEN')) {
+        if (-not $selected.Contains($key)) { throw ('В локальной конфигурации не заполнен ' + $key) }
+    }
+    if ($selected['SHIKIMORI_REDIRECT_URI'] -ne 'winshikiplayer://oauth') { throw 'Сборка WinShikiPlayer требует redirect winshikiplayer://oauth.' }
+    $directory = Join-Path $RepositoryRoot 'artifacts\bundled-configuration'
+    New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    $path = Join-Path $directory 'BundledConfiguration.json'
+    [IO.File]::WriteAllText($path, ($selected | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
+    return $path
+}
+
+function Sign-DevelopmentFile([string]$RepositoryRoot, [string]$FilePath) {
+    $directory = Join-Path $RepositoryRoot 'artifacts\signing'
+    Add-Type -AssemblyName System.Security.Cryptography.ProtectedData
+    $bytes = [IO.File]::ReadAllBytes((Join-Path $directory 'password.dpapi'))
+    $password = [Text.Encoding]::UTF8.GetString([Security.Cryptography.ProtectedData]::Unprotect($bytes, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser))
+    try {
+        $sdk = Get-WindowsSdkTools $RepositoryRoot
+        & (Join-Path $sdk 'signtool.exe') sign /fd SHA256 /f (Join-Path $directory 'WinShikiPlayer-development.pfx') /p $password $FilePath
+        if ($LASTEXITCODE -ne 0) { throw 'Не удалось подписать установочный EXE.' }
+        & (Join-Path $sdk 'signtool.exe') verify /pa $FilePath
+        if ($LASTEXITCODE -ne 0) { throw 'Подпись установочного EXE не прошла проверку.' }
+    } finally { $password = $null }
+}
+
 function ConvertTo-PackageVersion([string]$Value) {
     if ($Value -notmatch '^\d+\.\d+\.\d+(\.\d+)?$') { throw 'Версия должна иметь вид 0.3.0 или 0.3.0.1.' }
     $parsed = [version]$Value

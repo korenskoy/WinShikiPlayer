@@ -4,7 +4,7 @@
  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
  IgnorableNamespaces="uap rescap uap10">
- <Identity Name="WinShikiPlayer" Publisher="CN=WinShikiPlayer Development" Version="0.2.0.31" ProcessorArchitecture="x64" />
+ <Identity Name="WinShikiPlayer" Publisher="CN=WinShikiPlayer Development" Version="0.2.0.33" ProcessorArchitecture="x64" />
  <Properties><DisplayName>WinShikiPlayer</DisplayName><PublisherDisplayName>WinShikiPlayer</PublisherDisplayName><Logo>Assets\AppIcon.png</Logo></Properties>
  <Dependencies><TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" /></Dependencies>
  <Resources><Resource Language="ru-ru"/><Resource Language="en-us"/></Resources>

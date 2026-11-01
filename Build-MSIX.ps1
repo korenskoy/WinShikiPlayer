@@ -1,5 +1,5 @@
 #Requires -Version 7.0
-param([string]$Version, [switch]$SkipPublish)
+param([string]$Version, [switch]$SkipPublish, [switch]$WithoutApplicationKeys)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'packaging\Build.Common.ps1')
 $manifestContent = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'packaging\AppxManifest.xml') -Raw
@@ -11,7 +11,7 @@ $packageDirectory = Join-Path $PSScriptRoot 'artifacts\installer'
 $signingDirectory = Join-Path $PSScriptRoot 'artifacts\signing'
 if (-not $SkipPublish) {
     Reset-ArtifactDirectory $PSScriptRoot $sourcePath
-    & (Join-Path $PSScriptRoot 'build.ps1') -Publish -Version $packageVersion
+    & (Join-Path $PSScriptRoot 'build.ps1') -Publish -Version $packageVersion -WithoutApplicationKeys:$WithoutApplicationKeys
 }
 $sdkBin = Get-WindowsSdkTools $PSScriptRoot
 foreach ($directory in @($packageDirectory, $signingDirectory)) { New-Item -ItemType Directory -Path $directory -Force | Out-Null }

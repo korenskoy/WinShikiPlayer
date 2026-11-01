@@ -22,6 +22,7 @@
     <VCRTForwarders-IncludeDebugCRT>false</VCRTForwarders-IncludeDebugCRT>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="$(BundledApplicationConfiguration)" LogicalName="WinShikiPlayer.BundledConfiguration.json" Condition="'$(BundledApplicationConfiguration)' != ''" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.250907003" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
     <PackageReference Include="Microsoft.VCRTForwarders.140" Version="1.1.0" />

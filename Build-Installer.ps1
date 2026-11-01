@@ -1,6 +1,6 @@
 #Requires -Version 7.0
 [CmdletBinding()]
-param([string]$Version, [switch]$SkipTests)
+param([string]$Version, [switch]$SkipTests, [switch]$WithoutApplicationKeys)
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'packaging\Build.Common.ps1')
 $manifestPath = Join-Path $PSScriptRoot 'packaging\AppxManifest.xml'
@@ -29,6 +29,7 @@ $baseName = 'WinShikiPlayer-' + $packageVersion + '-Setup-x64'
 $kitDirectory = Join-Path $PSScriptRoot ('artifacts\installer-kits\' + $baseName)
 $packageName = 'WinShikiPlayer-' + $packageVersion + '-x64.msix'
 $zipPath = Join-Path $installerDirectory ($baseName + '.zip')
+$exePath = Join-Path $installerDirectory ($baseName + '.exe')
 $logPath = Join-Path $PSScriptRoot ('artifacts\installer-build-' + $packageVersion + '.log')
 $utf8 = [Text.UTF8Encoding]::new($true)
 Start-Transcript -Path $logPath -Force | Out-Null
@@ -40,7 +41,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Тесты не прошли. Установщик не выпущен.' }
     }
     Write-Host '[2/4] Чистая Release-публикация и подпись MSIX'
-    & (Join-Path $PSScriptRoot 'Build-MSIX.ps1') -Version $packageVersion
+    & (Join-Path $PSScriptRoot 'Build-MSIX.ps1') -Version $packageVersion -WithoutApplicationKeys:$WithoutApplicationKeys
     $builtPackage = Join-Path $installerDirectory $packageName
     Assert-PackageContents $builtPackage $packageVersion
     $sdkBin = Get-WindowsSdkTools $PSScriptRoot
@@ -79,7 +80,8 @@ WinShikiPlayer $packageVersion — Windows x64
 Обновление завершает запущенный WinShikiPlayer и сохраняет LocalState
 и учётные данные. Такая же или более новая установленная версия не заменяется.
 
-Личные ключи, OAuth-токены и appsettings.local.json в комплект не включены.
+Личные OAuth-токены, данные аккаунта и appsettings.local.json в комплект не включены.
+Общие ключи приложения могут быть добавлены при сборке из локальной конфигурации.
 На текущем компьютере используются сохранённые настройки и авторизация.
 На новом компьютере подключение настраивается внутри приложения.
 Для резервного веб-плеера нужен Microsoft Edge WebView2 Runtime.
@@ -102,9 +104,10 @@ Install.ps1 -CheckOnly проверяет комплект без установ
     } finally { $zip.Dispose() }
     $hash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash
     [IO.File]::WriteAllText(($zipPath + '.sha256'), ($hash + '  ' + [IO.Path]::GetFileName($zipPath) + "`r`n"), [Text.Encoding]::ASCII)
+    & (Join-Path $PSScriptRoot 'packaging\Build-SetupExecutable.ps1') -Version $packageVersion -ZipPath $zipPath -OutputPath $exePath
     if ((Get-Content -LiteralPath $manifestPath -Raw) -ne $manifestContent) { throw 'Исходный манифест изменился во время сборки; его версия не перезаписана.' }
     [IO.File]::WriteAllText($manifestPath, (Set-PackageManifestVersion $manifestContent $packageVersion), [Text.UTF8Encoding]::new($false))
-    $latest = [ordered]@{ version = $packageVersion; zip = [IO.Path]::GetFileName($zipPath); sha256 = $hash; msix = $packageName; certificate_thumbprint = $thumbprint; created_at = [DateTimeOffset]::UtcNow.ToString('o') }
+    $latest = [ordered]@{ version = $packageVersion; exe = [IO.Path]::GetFileName($exePath); exe_sha256 = (Get-FileHash -LiteralPath $exePath -Algorithm SHA256).Hash; zip = [IO.Path]::GetFileName($zipPath); sha256 = $hash; msix = $packageName; certificate_thumbprint = $thumbprint; bundled_application_keys = (-not $WithoutApplicationKeys -and (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'appsettings.local.json'))); created_at = [DateTimeOffset]::UtcNow.ToString('o') }
     [IO.File]::WriteAllText((Join-Path $installerDirectory 'latest.json'), ($latest | ConvertTo-Json), $utf8)
     Write-Host ('Готово: ' + $zipPath)
     Write-Host ('Журнал: ' + $logPath)
