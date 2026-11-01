@@ -4,6 +4,8 @@
 
 Windows-версия [MyShikiPlayer для macOS](https://github.com/korenskoy/myshikiplayer), с сохранением идей и интерфейса оригинала.
 
+![WinShikiPlayer — главный экран](screenshots/main-window.png)
+
 **[Скачать для Windows](https://github.com/korenskoy/WinShikiPlayer/releases/latest)**
 
 ## Возможности
