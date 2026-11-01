@@ -8,6 +8,12 @@ Windows-перенос [MyShikiPlayer для macOS](https://github.com/korenskoy
 
 Windows 10 2004 / 19041 или новее, **x64**. Для OAuth рекомендуется MSIX: `winshikiplayer://oauth` объявлен в манифесте и регистрируется при установке. Выбирать EXE через Microsoft Store не нужно.
 
+Готовая сборка — в [GitHub Releases](https://github.com/korenskoy/WinShikiPlayer/releases/latest): скачайте `WinShikiPlayer-<версия>-Setup-x64.zip`, полностью распакуйте архив и запустите `Install.cmd`. После установки откройте WinShikiPlayer из меню «Пуск».
+
+Публичные сборки не содержат ключей Shikimori/Kodik. На новом компьютере укажите собственные OAuth-данные Shikimori и API-токен Kodik в настройках приложения. Сборка подписана сертификатом разработки; установщик запрашивает разрешение администратора для добавления публичного сертификата, если он ещё не доверен.
+
+Для сборки и установки из исходников:
+
 ```powershell
 .\Build-MSIX.ps1
 .\Install-MSIX.ps1 -TrustDevelopmentCertificate -IncludeLocalConfiguration
